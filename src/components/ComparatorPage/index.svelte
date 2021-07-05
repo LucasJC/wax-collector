@@ -141,10 +141,12 @@
   }
 </script>
 
-<p>This tool shows each accounts assets with the aim of helping find possible trades.</p>
-<p>
-  If you find any issues please report them over <a href="https://github.com/LucasJC/wax-collector/issues" target="_blank">here</a>.
-</p>
+<div class="p-5">
+  <p>This tool shows each accounts assets with the aim of helping find possible trades.</p>
+  <p>
+    If you find any issues please report them over <a href="https://github.com/LucasJC/wax-collector/issues" target="_blank">here</a>.
+  </p>
+</div>
 
 <div class="section">
   <div class="field">

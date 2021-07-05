@@ -5,6 +5,12 @@
 </script>
 
 <section id="header" class="hero">
+  <div class="hero-body">
+    <p class="title">
+      WAX Collector
+    </p>
+  </div>
+  <!--
   <nav class="navbar hero-body" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
       <div class="column">
@@ -13,9 +19,7 @@
         </p>
         <p class="subtitle">
         </p>
-      </div>
-      <!-- svelte-ignore a11y-missing-attribute -->
-<!--       
+      </div>    
       <a
         role="button"
         class="navbar-burger"
