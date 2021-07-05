@@ -6,5 +6,8 @@
         github <span class="fab fa-github" />
       </a>
     </p>
+    <p>
+      WAX Address for donations: <strong>2frba.wam</strong>
+    </p>
   </div>
 </footer>

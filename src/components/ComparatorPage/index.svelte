@@ -1,13 +1,15 @@
 <script lang="ts">
   import { fetchAssets, fetchSchemas } from "../../domain/Asset";
-  import type { ListingAsset, OwnedAsset } from "../../domain/Asset";
+  import type { OwnedAsset } from "../../domain/Asset";
   import AssetsSummary from "./AssetsSummary.svelte";
   import type { ApiSchema } from "atomicassets/build/API/Explorer/Types";
   import Selector from "../Selector.svelte";
+  import type { ApiAsset } from "../../external/AtomicAssets";
 
   let showDetails = false;
-  let hideOwnedBy1 = false;
-  let hideOwnedBy2 = false;
+  let hideOwnedBy1 = true;
+  let hideOwnedBy2 = true;
+  let showOnlyDupes = true;
 
   export let collection: string;
   let lastCollection: string;
@@ -26,11 +28,12 @@
     assets: OwnedAsset[];
   }
 
-  let assets: ListingAsset[];
+  let assets: ApiAsset[];
   let groupedAssets: Map<string, AssetsGroup>;
 
-  let loading1 = false;
-  let loading2 = false;
+  let loadingAccount1 = false;
+  let loadingAccount2 = false;
+  let loadingCollection = false;
 
   $: disabled = !(account1 && account2 && collection && schema);
 
@@ -44,11 +47,28 @@
 
   function onCollectionChange() {
     if (collection !== lastCollection) {
+      loadingCollection = true;
       schema = undefined;
       schemas = [];
-      fetchSchemas(collection).then(r => schemas = r);
+      fetchSchemas(collection)
+        .then(r => schemas = r)
+        .finally(() => loadingCollection = false);
       lastCollection = collection;
     }
+  }
+
+  function calculateTemplates(): Map<string, { count: number, first: string }> {
+    const map = new Map<string, { count: number, first: string }>();
+    for (let asset of assets) {
+      const key = asset.owner + ":" + asset.template.template_id;
+      if (map.has(key)) {
+        const entry = map.get(key);
+        entry.count = entry.count + 1;
+      } else {
+        map.set(key, { count: 1, first: asset.asset_id});
+      }
+    }
+    return map;
   }
 
   function groupAssets() {
@@ -56,25 +76,25 @@
       if (!groupingField) {
         groupingField = "name";
       }
-      const account1Templates = new Set(assets.filter(a => a.owner === account1).map(a => a.template.template_id));
-      const account2Templates = new Set(assets.filter(a => a.owner === account2).map(a => a.template.template_id));
-
+      const templatesMap = calculateTemplates();
       const map = new Map<string, AssetsGroup>();
       console.log("Grouping assets by " + groupingField)
       for (let asset of assets) {
         const fieldVal = asset.data[groupingField];
-
+        const template = asset.template.template_id;
+        const templateSummary = templatesMap.get(asset.owner + ":" + template);
         let otherHasOne = false;
         if (asset.owner === account1) {
-          otherHasOne = account2Templates.has(asset.template.template_id);
-        } else {
-          otherHasOne = account1Templates.has(asset.template.template_id);
+          otherHasOne = templatesMap.has(account2 + ":" + template);
+        } else { // account 2
+          otherHasOne = templatesMap.has(account1 + ":" + template);
         }
-
+        const isFirst = templateSummary.first === asset.asset_id;
+        const copies = templateSummary.count;
         if (map.has(fieldVal)) {
-          map.get(fieldVal).assets.push({...asset, otherHasOne});
+          map.get(fieldVal).assets.push({...asset, otherHasOne, isFirst, copies});
         } else {
-          map.set(fieldVal, { field: fieldVal, assets: [{...asset, otherHasOne}]});
+          map.set(fieldVal, { field: fieldVal, assets: [{...asset, otherHasOne, isFirst, copies}]});
         }
       }
       groupedAssets = map;
@@ -83,19 +103,19 @@
 
   async function searchAssets() {
     assets = undefined;
-    loading1 = true;
-    loading2 = true;
+    loadingAccount1 = true;
+    loadingAccount2 = true;
     const resultingAssets = [];
     await Promise.all([
       fetchAssets(account1, collection, schema.schema_name).then(r => {
         r.forEach(el => resultingAssets.push(el));
       }).finally(() => {
-        loading1 = false;
+        loadingAccount1 = false;
       }),
       fetchAssets(account2, collection, schema.schema_name).then(r => {
         r.forEach(el => resultingAssets.push(el));
       }).finally(() => {
-        loading2 = false;
+        loadingAccount2 = false;
       })
     ]).then(() => {
       assets = resultingAssets;
@@ -103,39 +123,61 @@
     }).catch(err => window.alert(`Error fetching assets: ${err}`));
   }
 
-  function filterAssets(group: AssetsGroup, owner: string, hideOwnedByOther: boolean): OwnedAsset[] {
-    return group.assets.filter(a => a.owner === owner).filter(a => {
-      if (hideOwnedByOther) {
-        return !a.otherHasOne;
-      }
-      return true;
-    });
+  function filterAssets(group: AssetsGroup, owner: string, hideOwnedByOther: boolean, showOnlyDupes: boolean): OwnedAsset[] {
+    return group.assets
+      .filter(a => a.owner === owner)
+      .filter(a => {
+        if (showOnlyDupes) {
+          return !a.isFirst;
+        }
+        return true;
+      })
+      .filter(a => {
+        if (hideOwnedByOther) {
+          return !a.otherHasOne;
+        }
+        return true;
+      });
   }
 </script>
+
+<p>This tool shows each accounts assets with the aim of helping find possible trades.</p>
+<p>
+  If you find any issues please report them over <a href="https://github.com/LucasJC/wax-collector/issues" target="_blank">here</a>.
+</p>
 
 <div class="section">
   <div class="field">
     <label class="label" for="collection">Collection</label>
-    <div class="control is-expanded">
+    <div class="control has-icons-left" class:is-loading={loadingCollection}>
       <input id="collection" class="input" type="text" placeholder="Collection" 
         bind:value={collection} 
         on:focusout={onCollectionChange}
         on:keyup={e=>e.key==='Enter' && onCollectionChange()}
       >
+      {#if schemas && schemas.length > 0}
+        <span class="icon is-left has-text-success" data-tooltip="Collection [{collection}] OK">
+          <i class="fas fa-check-square"></i>
+        </span>
+      {:else}
+        <span class="icon is-left has-text-danger" data-tooltip="Collection [{collection}] not found">
+          <i class="fas fa-ban"></i>
+        </span>
+      {/if}
     </div>
   </div>
 
-  <Selector id="schema" label="Schema" bind:value={schema} options={schemas} description={sch => sch.schema_name}/>
+  <Selector id="schema" label="Schema" bind:value={schema} options={schemas} description={sch => sch.schema_name} loader={loadingCollection}/>
 
-  <Selector id="group" label="Group By" bind:value={groupingField} options={fields} description={f => f}/>
+  <Selector id="group" label="Group By" bind:value={groupingField} options={fields} description={f => f} loader={loadingCollection}/>
 
   <form>
     <p class="label">Accounts</p>
     <div class="field is-grouped">
-      <div class="control is-expanded" class:is-loading={loading1}>
+      <div class="control is-expanded" class:is-loading={loadingAccount1}>
         <input class="input" type="text" placeholder="WAX Account 1" bind:value="{account1}">
       </div>
-      <div class="control is-expanded" class:is-loading={loading2}>
+      <div class="control is-expanded" class:is-loading={loadingAccount2}>
         <input class="input" type="text" placeholder="WAX Account 2" bind:value="{account2}">
       </div>
       <div class="control">
@@ -145,9 +187,9 @@
       </div>
     </div>
   </form>
-
-  <div class="section">
-    <p class="label">Other settings</p>
+  <hr class="m-6">
+  <div>
+    <p class="label">Live settings</p>
     <div class="field">
       <label class="checkbox">
         <input type="checkbox" bind:checked={showDetails}>
@@ -157,13 +199,19 @@
     <div class="field">
       <label class="checkbox">
         <input type="checkbox" bind:checked={hideOwnedBy1}>
-        Hide owned by {account1 ?? "Account 1"}
+        Hide {account2 ?? "Account 2"} assets already owned by {account1 ?? "Account 1"}
       </label>
     </div>
     <div class="field">
       <label class="checkbox">
         <input type="checkbox" bind:checked={hideOwnedBy2}>
-        Hide owned by {account2 ?? "Account 2"}
+        Hide {account1 ?? "Account 1"} assets already owned by {account2 ?? "Account 2"}
+      </label>
+    </div>
+    <div class="field">
+      <label class="checkbox">
+        <input type="checkbox" bind:checked={showOnlyDupes}>
+        Show only assets with duplicates
       </label>
     </div>
   </div>
@@ -179,8 +227,8 @@
         {#each [...groupedAssets] as [field, group]}
           <tr>
             <td>{field ? field : ""}</td>
-            <td><AssetsSummary assets={filterAssets(group, account1, hideOwnedBy2)} otherAccount={account2} {showDetails} /></td>
-            <td><AssetsSummary assets={filterAssets(group, account2, hideOwnedBy1)} otherAccount={account1} {showDetails} /></td>
+            <td><AssetsSummary assets={filterAssets(group, account1, hideOwnedBy2, showOnlyDupes)} otherAccount={account2} {showDetails} /></td>
+            <td><AssetsSummary assets={filterAssets(group, account2, hideOwnedBy1, showOnlyDupes)} otherAccount={account1} {showDetails} /></td>
           </tr>
         {/each}
       </table>

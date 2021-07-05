@@ -1,4 +1,4 @@
-export type { ApiCollection, ApiSchema, ApiTemplate } from "atomicassets/build/API/Explorer/Types";
+export type { ApiCollection, ApiSchema, ApiTemplate, ApiAsset } from "atomicassets/build/API/Explorer/Types";
 import { ExplorerApi } from "atomicassets";
 
 export function atomicAssets(): ExplorerApi {
