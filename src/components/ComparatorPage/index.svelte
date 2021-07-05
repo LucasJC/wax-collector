@@ -35,7 +35,7 @@
   let loadingAccount2 = false;
   let loadingCollection = false;
 
-  $: disabled = !(account1 && account2 && collection && schema);
+  $: disabled = !(account1 && account2 && collection && schema && account1 !== account2);
 
   $: if (collection || schema) {
     if (!schema) {
@@ -80,17 +80,14 @@
       const map = new Map<string, AssetsGroup>();
       console.log("Grouping assets by " + groupingField)
       for (let asset of assets) {
-        const fieldVal = asset.data[groupingField];
         const template = asset.template.template_id;
         const templateSummary = templatesMap.get(asset.owner + ":" + template);
-        let otherHasOne = false;
-        if (asset.owner === account1) {
-          otherHasOne = templatesMap.has(account2 + ":" + template);
-        } else { // account 2
-          otherHasOne = templatesMap.has(account1 + ":" + template);
-        }
+        const other = asset.owner === account1 ? account2 : account1;
+        const otherHasOne = templatesMap.has(other + ":" + template);
         const isFirst = templateSummary.first === asset.asset_id;
         const copies = templateSummary.count;
+        const fieldVal = asset.data[groupingField];
+
         if (map.has(fieldVal)) {
           map.get(fieldVal).assets.push({...asset, otherHasOne, isFirst, copies});
         } else {
@@ -98,6 +95,7 @@
         }
       }
       groupedAssets = map;
+      console.log("Groups result", groupedAssets);
     }
   }
 
@@ -137,6 +135,10 @@
           return !a.otherHasOne;
         }
         return true;
+      }).sort((a, b) => {
+        const akey = a.name + ":" + a.template_mint.padStart(10, "0");
+        const bkey = b.name + ":" + b.template_mint.padStart(10, "0");
+        return akey.localeCompare(bkey);
       });
   }
 </script>

@@ -12,7 +12,7 @@
     <table class="table is-fullwidth has-text-centered is-hcentered">
       {#each assets as asset}
         <tr>
-          <div class="m-4">
+          <div class="m-2">
             <a href=https://wax.atomichub.io/explorer/asset/{asset.asset_id} target="_blank">
               {asset.name} #{asset["template_mint"]}
             </a>
@@ -25,7 +25,6 @@
                 <i class="fas fa-ban"></i>
               </span>
             {/if}
-            
             {#if showDetails}
               <div class="mt-2">
                 <table class="table is-fullwidth has-text-centered is-hcentered">

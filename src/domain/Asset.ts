@@ -26,7 +26,7 @@ export async function fetchAssets(account: string, collection: string, schema: s
   const LIMIT = 500;
   const api = atomicAssets();
   let more = true;
-  let page = 0;
+  let page = 1;
   let result: ApiAsset[] = [];
   while (more) {
     const assets = await api.getAssets({
@@ -40,8 +40,8 @@ export async function fetchAssets(account: string, collection: string, schema: s
     if (assets.length < LIMIT) {
       more = false;
     }
-    page++;
-    result = result.concat(assets);
+    page = page + 1;
+    result = [...result, ...assets];
   }
   return result;
 }
