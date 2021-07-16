@@ -11,13 +11,13 @@ export interface OwnedAsset extends ApiAsset {
 
 export async function fetchCollection(collection: string): Promise<ApiCollection> {
   const api = atomicAssets();
-  return api.getCollection(collection);
+  return api.getCollection(collection.toLowerCase());
 }
 
 export async function fetchSchemas(collection: string): Promise<ApiSchema[]> {
   const api = atomicAssets();
   return api.getSchemas({
-    collection_name: collection,
+    collection_name: collection.toLowerCase(),
     sort: "schema_name"
   })
 }
@@ -31,7 +31,7 @@ export async function fetchAssets(account: string, collection: string, schema: s
   while (more) {
     const assets = await api.getAssets({
       owner: account,
-      collection_name: collection,
+      collection_name: collection.toLowerCase(),
       schema_name: schema,
       only_duplicate_templates: onlyDupes,
       sort: AssetSort.AssetId,
