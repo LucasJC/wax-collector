@@ -5,5 +5,5 @@ export function atomicAssets(): ExplorerApi {
   if (window) {
     (window as any).global = window;
   }
-  return new ExplorerApi("https://wax.api.atomicassets.io", "atomicassets", {});
+  return new ExplorerApi("https://wax.api.aa.atomichub.io", "atomicassets", {});
 }
