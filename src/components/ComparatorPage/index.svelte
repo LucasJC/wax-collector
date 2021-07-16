@@ -5,6 +5,7 @@
   import type { ApiSchema } from "atomicassets/build/API/Explorer/Types";
   import Selector from "../Selector.svelte";
   import type { ApiAsset } from "../../external/AtomicAssets";
+  import { MIRRORS, DEFAULT_MIRROR }  from "../../external/AtomicAssets";
 
   let showDetails = false;
   let hideOwnedBy1 = true;
@@ -22,6 +23,9 @@
 
   export let account1: string;
   export let account2: string;
+
+  let mirror = DEFAULT_MIRROR;
+  let lastMirror;
 
   interface AssetsGroup {
     field: string;
@@ -50,7 +54,7 @@
       loadingCollection = true;
       schema = undefined;
       schemas = [];
-      fetchSchemas(collection)
+      fetchSchemas(collection, mirror.url)
         .then(r => schemas = r)
         .finally(() => loadingCollection = false);
       lastCollection = collection;
@@ -105,12 +109,12 @@
     loadingAccount2 = true;
     const resultingAssets = [];
     await Promise.all([
-      fetchAssets(account1, collection, schema.schema_name).then(r => {
+      fetchAssets(account1, collection, schema.schema_name, mirror.url).then(r => {
         r.forEach(el => resultingAssets.push(el));
       }).finally(() => {
         loadingAccount1 = false;
       }),
-      fetchAssets(account2, collection, schema.schema_name).then(r => {
+      fetchAssets(account2, collection, schema.schema_name, mirror.url).then(r => {
         r.forEach(el => resultingAssets.push(el));
       }).finally(() => {
         loadingAccount2 = false;
@@ -151,6 +155,7 @@
 </div>
 
 <div class="section">
+  <Selector id="mirror" label="API Mirror" bind:value={mirror} options={MIRRORS} description={m => m.name} />
   <div class="field">
     <label class="label" for="collection">Collection</label>
     <div class="control has-icons-left" class:is-loading={loadingCollection}>

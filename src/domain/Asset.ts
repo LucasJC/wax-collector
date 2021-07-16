@@ -1,30 +1,29 @@
 import { AssetSort, SortOrder } from "atomicmarket/build/API/Explorer/Types";
-import { ApiCollection, atomicAssets, ApiSchema, ApiAsset } from "../external/AtomicAssets";
+import { ApiCollection, atomicAssets, ApiSchema, ApiAsset, DEFAULT_MIRROR } from "../external/AtomicAssets";
 export type { ListingAsset } from "../external/AtomicMarket";
 export type { ApiSchema } from "../external/AtomicAssets";
-
 export interface OwnedAsset extends ApiAsset {
   otherHasOne: boolean;
   isFirst: boolean;
   copies: number;
 }
 
-export async function fetchCollection(collection: string): Promise<ApiCollection> {
-  const api = atomicAssets();
+export async function fetchCollection(collection: string, apiMirror: string): Promise<ApiCollection> {
+  const api = atomicAssets(apiMirror);
   return api.getCollection(collection.toLowerCase());
 }
 
-export async function fetchSchemas(collection: string): Promise<ApiSchema[]> {
-  const api = atomicAssets();
+export async function fetchSchemas(collection: string, apiMirror: string): Promise<ApiSchema[]> {
+  const api = atomicAssets(apiMirror);
   return api.getSchemas({
     collection_name: collection.toLowerCase(),
     sort: "schema_name"
   })
 }
 
-export async function fetchAssets(account: string, collection: string, schema: string, onlyDupes = false): Promise<ApiAsset[]> {
+export async function fetchAssets(account: string, collection: string, schema: string, apiMirror: string, onlyDupes = false): Promise<ApiAsset[]> {
   const LIMIT = 500;
-  const api = atomicAssets();
+  const api = atomicAssets(apiMirror);
   let more = true;
   let page = 1;
   let result: ApiAsset[] = [];
